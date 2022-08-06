@@ -140,6 +140,15 @@ let options = {
 //   // .then(list => res.status(200).send(list.data))
 //   // .catch(err => res.status(500).send(err));
 // });
+
+//level 1
+app.get("/api/ping", (req, res) => {
+  res.status(400).send({
+    success:"true",
+  })
+});
+
+//level 2
 app.get('/posts', (req, res) => {
   let tags = req.query.tags;
   console.log('tags: ', tags)
@@ -150,25 +159,25 @@ app.get('/posts', (req, res) => {
   let direction = req.query.direction;
   console.log('direction', direction);
 
-  const validSortValues = [
-    "id",
+  const validSortedVals = [
     "author",
     "authorId",
+    "id",
     "likes",
     "popularity",
     "reads",
     "tags",
-    undefined,
+//     undefined
   ];
-  const validDirections = ["asc", "desc", undefined];
+  const validDir = ["asc", "desc", undefined];
 
   // Throws error if the sortBy/direction value are not valid.
-  if (validSortValues.indexOf(sortBy) === -1) {
+  if (!(validSortedVals.includes(sortBy))) {
     res.status(400).send({
       error: "sortBy parameter is invalid",
     });
   }
-  if (validDirections.indexOf(direction) === -1) {
+  if (!(validDir.indexOf(direction))) {
     res.status(400).send({
       error: "sortBy parameter is invalid",
     });
@@ -177,16 +186,14 @@ app.get('/posts', (req, res) => {
   // If the user requests more than one tag, we will precede with the following
   if (tags.indexOf(",") !== -1) {
     let tagArray = tags.split(",");
-    let getPaths = tagArray.map((tag, i) => {
+    let getPathsArr = tagArray.map((tag, i) => {
       return axios.get(
         `${options.url}/posts?tag=${tags}&sortBy=${sortBy}&direction=${direction}`
       );
     });
 
     axios
-      .all([...getPaths])
-
-      // Null/undefined are not used because I use the length method below on the data array
+      .all([...getPathsArr])
       .then(
         axios.spread((tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9) => {
           let data = [
@@ -200,59 +207,56 @@ app.get('/posts', (req, res) => {
             tag8 ? tag8.data.posts : "",
             tag9 ? tag9.data.posts : "",
           ];
-          // Most efficient way to get rid of duplicates is to make a hash table
-          // Using the post id as the key in the hash table, it will ensure that duplicates are removed
+
           let post = {};
-          let posts = [];
+          let postsArr = [];
           for (let i = 0; i < data.length; i++) {
-            let blog = data[i];
-            for (let i = 0; i < blog.length; i++) {
-              post[blog[i].id] = blog[i];
+            let curr = data[i];
+            for (let i = 0; i < curr.length; i++) {
+              post[curr[i].id] = curr[i];
             }
           }
 
-          // Create response object so that the result of the request is in the correct format
           for (let key in post) {
-            posts.push(post[key]);
+            postsArr.push(post[key]);
           }
 
-          // if a sortBy value is utilized by the user, then we will sort depending on the direction
+
           if (sortBy) {
             if (direction === "desc") {
-              posts = posts.sort((a, b) => (b[sortBy] > a[sortBy] ? 1 : -1));
+              postsArr = postsArr.sort((a, b) => (b[sortBy] > a[sortBy] ? 1 : -1));
             } else {
-              posts = posts.sort((a, b) => (b[sortBy] < a[sortBy] ? 1 : -1));
+              postsArr = postsArr.sort((a, b) => (b[sortBy] < a[sortBy] ? 1 : -1));
             }
           }
 
-          // Finally we have rid ourselves of duplicates and sorted our data as the user desires and can return the data
-          res.status(200).send(posts);
+
+          res.status(200).send(postsArr);
         })
       )
 
-      // If no tags are used, then this error will be shown to the user
       .catch((error) => {
         res.status(400).send({
-          error: "Tags parameter is required",
+          error: "Tags parameter is required!!!",
         });
         console.log(error);
       });
   } else {
-    // If user searches for one tag, then we don't have to worry about duplicate values
+
     axios
       .get(
         `${options.url}/posts?tag=${tags}&sortBy=${sortBy}&direction=${direction}`
       )
       .then((request) => {
-        let data = request.data.posts;
+        let postsArr = request.data.posts;
         if (sortBy) {
           if (direction === "desc") {
-            data = data.sort((a, b) => (b[sortBy] > a[sortBy] ? 1 : -1));
+            postsArr = postsArr.sort((a, b) => (b[sortBy] > a[sortBy] ? 1 : -1));
           } else {
-            data = data.sort((a, b) => (b[sortBy] < a[sortBy] ? 1 : -1));
+            postsArr = postsArr.sort((a, b) => (b[sortBy] < a[sortBy] ? 1 : -1));
           }
         }
-        res.status(200).send(data);
+        res.status(200).send(postsArr);
       })
       .catch((error) => {
         res.status(400).send({
